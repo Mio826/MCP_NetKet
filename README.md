@@ -6,6 +6,6 @@ Required packages:
 
 NumPy: 
 Scipy:
-NetKet: 3.11.4
+NetKet: 3.13.0
 Qutip: 5.2.0
 MCP: 1.9.3

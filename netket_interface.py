@@ -1,12 +1,14 @@
-from mcp.server.fastmcp import FastMCP
 import numpy as np
+from scipy.sparse.linalg import eigsh
 import sys
-import netket as nk
+
+from mcp.server.fastmcp import FastMCP
+
 import netket.graph as nkgraph
 import netket.hilbert as nkh
 import netket.experimental as nkx
 from fermion_builder import *
-from scipy.sparse.linalg import eigsh
+
 
 with open("mcp_log.txt", "a") as f:
     f.write("netket_interface.py\n")
@@ -151,7 +153,7 @@ def ED(handle, k=5, which="SA"):
         eig_vals_sorted = eig_vals[sort_idx]
         eig_vecs_sorted = eig_vecs[:, sort_idx]
     else:
-        eig_vals_sorted, eig_vecs_sorted = np.linalg.eigh(np.array(H.to_qobj()))
+        eig_vals_sorted, eig_vecs_sorted = np.linalg.eigh(H.to_dense())
     E0 = np.min(eig_vals_sorted)
     degeneracy = np.sum(np.abs(eig_vals_sorted - E0) < 1e-8)
     return eig_vals_sorted, eig_vecs_sorted, degeneracy
@@ -162,8 +164,9 @@ def expect_ED(OP,eig_vec)->float:
     """
     OP: netket type operator
     eig_vec: eigenvector
+    This function is used to calculate expectation value of OP under eig_vec
     """
-    OP = np.array(OP)
+    OP = OP.to_dense()
     ket = np.array(eig_vec).reshape(-1,1)
     bra = np.array(ket.conjugate().reshape(1,-1))
     return (bra@(OP@ket)).item()
@@ -175,13 +178,18 @@ def correlation(eig_vec, op1, op2, connect=True) ->float:
     eig_vec: eigenvector
     op1: operator1 op2: operator 2
     connect: bool: calculating disconnected or connected correlation function?
+    This function is used to calculate correlation between op1 and op2 under eig_vec
     """
-    OP = np.array(op1*op2)
+    OP = (op1*op2).to_dense()
     return expect_ED(OP,eig_vec)
 
 #nearest spin-spin correlation function
 @mcp.tool()
 def spin_correlation(handle, connect=True) -> list:
+    """
+    this function is specially used to calculate the nearest spin-spin correlation under ground state of model MODEL_STORE[handle]
+    function structure: 1. get ground state by ED, 2. catch the graph of model, 3. go through the graph edges as nearest bonds 4. return the spin-spin correlation as a list
+    """
     _,eigenstates,_ = ED(handle, k=5, which="SA")
     groundstate = eigenstates[:,0]
     graph = MODEL_STORE[handle]["graph"]

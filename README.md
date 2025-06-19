@@ -106,24 +106,24 @@ systems = manager.list_systems()
 
 | Model Type         | Example Text Input                        | Supported Parameters         | Hamiltonian Equation                                                                                  |
 |--------------------|-------------------------------------------|-----------------------------|------------------------------------------------------------------------------------------------------|
-|   Hubbard          | `Hubbard model with t=1, U=4`             | `t`, `U`                    | $ H = -t \sum_{\langle i,j \rangle, \sigma} (c_{i\sigma}^\dagger c_{j\sigma} + h.c.) + U \sum_i n_{i\uparrow} n_{i\downarrow} $ |
-|   Extended Hubbard | `Extended Hubbard: t=1, U=4, V=0.5`     | `t`, `U`, `V`               | $ H = -t \sum_{\langle i,j \rangle, \sigma} (c_{i\sigma}^\dagger c_{j\sigma} + h.c.) + U \sum_i n_{i\uparrow} n_{i\downarrow} + V \sum_{\langle i,j \rangle} n_i n_j $ |
-|   Heisenberg       | `Heisenberg model with J=1, hx=0.5`       | `J`, `hx`, `hz`             | $ H = J \sum_{\langle i,j \rangle} \vec{S}_i \cdot \vec{S}_j + h_x \sum_i S_i^x + h_z \sum_i S_i^z $ |
-|   Ising            | `Ising model with Jz=1, hx=0.2`           | `Jz`, `hx`, `hz`            | $ H = J_z \sum_{\langle i,j \rangle} S_i^z S_j^z + h_x \sum_i S_i^x + h_z \sum_i S_i^z $           |
-|   Fermion hopping  | `Fermion hopping t=1 and Zeeman field B=0.1` | `t`, `B`                | $ H = -t \sum_{\langle i,j \rangle, \sigma} (c_{i\sigma}^\dagger c_{j\sigma} + h.c.) + B \sum_i (n_{i\uparrow} - n_{i\downarrow}) $ |
-|   Boson            | `Boson model with t=1, mu=0.5`            | `t`, `mu`                   | $ H = -t \sum_{\langle i,j \rangle} (b_i^\dagger b_j + h.c.) - \mu \sum_i n_i $                    |
+|   Hubbard          | `Hubbard model with t=1, U=4`             | `t`, `U`                    | $$ H = -t \sum_{\langle i,j \rangle, \sigma} (c_{i\sigma}^\dagger c_{j\sigma} + h.c.) + U \sum_i n_{i\uparrow} n_{i\downarrow} $$ |
+|   Extended Hubbard | `Extended Hubbard: t=1, U=4, V=0.5`     | `t`, `U`, `V`               | $$ H = -t \sum_{\langle i,j \rangle, \sigma} (c_{i\sigma}^\dagger c_{j\sigma} + h.c.) + U \sum_i n_{i\uparrow} n_{i\downarrow} + V \sum_{\langle i,j \rangle} n_i n_j $$ |
+|   Heisenberg       | `Heisenberg model with J=1, hx=0.5`       | `J`, `hx`, `hz`             | $$ H = J \sum_{\langle i,j \rangle} \vec{S}_i \cdot \vec{S}_j + h_x \sum_i S_i^x + h_z \sum_i S_i^z $$ |
+|   Ising            | `Ising model with Jz=1, hx=0.2`           | `Jz`, `hx`, `hz`            | $$ H = J_z \sum_{\langle i,j \rangle} S_i^z S_j^z + h_x \sum_i S_i^x + h_z \sum_i S_i^z $$           |
+|   Fermion hopping  | `Fermion hopping t=1 and Zeeman field B=0.1` | `t`, `B`                | $$ H = -t \sum_{\langle i,j \rangle, \sigma} (c_{i\sigma}^\dagger c_{j\sigma} + h.c.) + B \sum_i (n_{i\uparrow} - n_{i\downarrow}) $$ |
+|   Boson            | `Boson model with t=1, mu=0.5`            | `t`, `mu`                   | $$ H = -t \sum_{\langle i,j \rangle} (b_i^\dagger b_j + h.c.) - \mu \sum_i n_i $$                    |
 
 ---
 
 **Legend:**
-- $ c_{i\sigma}^\dagger, c_{i\sigma} $: Fermionic creation/annihilation operators at site $ i $ with spin $ \sigma $
-- $ n_{i\sigma} = c_{i\sigma}^\dagger c_{i\sigma} $: Number operator
-- $ n_i = n_{i\uparrow} + n_{i\downarrow} $: Total number operator at site $ i $
-- $ \vec{S}_i $: Spin operator at site $ i $
-- $ S_i^x, S_i^z $: Spin-x and spin-z operators
-- $ b_i^\dagger, b_i $: Bosonic creation/annihilation operators
-- $ \langle i,j \rangle $: Sum over nearest neighbors
-- $ h.c. $: Hermitian conjugate
+- $$ c_{i\sigma}^\dagger, c_{i\sigma} $$: Fermionic creation/annihilation operators at site $$ i $$ with spin $$ \sigma $$
+- $$ n_{i\sigma} = c_{i\sigma}^\dagger c_{i\sigma} $$: Number operator
+- $$ n_i = n_{i\uparrow} + n_{i\downarrow} $$: Total number operator at site $$ i $$
+- $$ \vec{S}_i $$: Spin operator at site $$ i $$
+- $$ S_i^x, S_i^z $$: Spin-x and spin-z operators
+- $$ b_i^\dagger, b_i $$: Bosonic creation/annihilation operators
+- $$ \langle i,j \rangle $$: Sum over nearest neighbors
+- $$ h.c. $$: Hermitian conjugate
 
 ---
 

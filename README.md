@@ -137,3 +137,48 @@ The simplified design makes it easy to add new predefined models:
 - Update parameter parsing in `_parse_hamiltonian_text()`
 
 This approach provides a solid foundation for quantum many-body physics research while maintaining simplicity and reliability.
+
+## 🧪 Example Analyses and Physical Interpretation
+
+This repository includes ready-to-run analysis scripts for classic quantum many-body models. These scripts demonstrate how to use the MCP tools to reveal phase transitions and key physical phenomena:
+
+### **1. SSH Model: Topological Edge States and Spectrum**
+- **Script:** `ssh_full_spectrum_analysis.py`
+- **What it does:**
+  - Computes the full single-particle spectrum as a function of dimerization ratio \( t_2/t_1 \).
+  - Plots the spatial profile of the zero-energy edge state in the topological phase (using 1 spinless fermion).
+- **Physical meaning:**
+  - The spectrum shows the gap closing at the topological transition.
+  - The edge state profile reveals localization at the chain ends in the topological phase.
+
+### **2. Hubbard Model: Mott Metal-Insulator Transition**
+- **Script:** `analyze_hubbard.py`
+- **What it does:**
+  - Computes the true Mott gap (charge gap) as a function of on-site repulsion \( U \) at half-filling.
+  - Plots only the Mott gap (no ground state energy).
+- **Physical meaning:**
+  - The gap is small at \( U=0 \) (metallic), and opens for \( U>0 \) (Mott insulator).
+  - Demonstrates the Mott transition in finite-size systems.
+
+### **3. Ising Model: Quantum Phase Transition**
+- **Script:** `analyze_ising.py`
+- **What it does:**
+  - Computes the lowest few eigenvalues for a chain of spins as a function of transverse field \( h_x \).
+  - Plots both the energy gap (between ground and first excited state) and the ground state degeneracy as a function of \( h_x \).
+- **Physical meaning:**
+  - The gap is nearly zero and the ground state is two-fold degenerate in the ferromagnetic phase (\( h_x < 1 \)).
+  - The gap opens and degeneracy drops to 1 in the paramagnetic phase (\( h_x > 1 \)).
+  - The transition is clearly visible as the point where the gap opens and degeneracy changes.
+
+### **How to use these scripts**
+- Each script is self-contained and can be run directly (e.g., `python3 analyze_ising.py`).
+- The output plots are saved as PNG files in the working directory.
+- The scripts serve as templates for further model studies and can be easily adapted to new models or observables.
+
+### **Best Practices for Extending Analyses**
+- Use the MCP tools to build systems modularly: set lattice, Hilbert space, and Hamiltonian step by step.
+- For phase transitions, scan the relevant parameter (e.g., \( t_2/t_1 \), \( U \), \( h_x \)).
+- Plot physically meaningful observables: energy gap, order parameter (magnetization), degeneracy, or spatial profiles.
+- For symmetry-broken phases, consider adding a tiny symmetry-breaking field to reveal the order parameter in finite systems.
+
+These examples provide a robust starting point for both users and developers to explore quantum phase transitions and many-body physics using the MCP server and NetKet.

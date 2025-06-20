@@ -1,0 +1,51 @@
+{
+  "system_id": "system_30f946f0",
+  "created_at": "2025-06-20T00:57:49.739090",
+  "last_modified": "2025-06-20T00:57:49.740096",
+  "status": "complete",
+  "warnings": [],
+  "history": [
+    {
+      "timestamp": "2025-06-20T00:57:49.739764",
+      "action": "set_lattice",
+      "data": "chain of 12 sites"
+    },
+    {
+      "timestamp": "2025-06-20T00:57:49.739945",
+      "action": "set_hilbert",
+      "data": "spin-1/2 on each site"
+    },
+    {
+      "timestamp": "2025-06-20T00:57:49.740096",
+      "action": "set_hamiltonian",
+      "data": {
+        "text": "Ising model with Jz=1.0, hx=0.0, hz=1e-06"
+      }
+    }
+  ],
+  "lattice": {
+    "lattice_type": "chain",
+    "extent": [
+      12
+    ],
+    "text": "chain of 12 sites"
+  },
+  "hilbert": {
+    "space_type": "spin",
+    "spin": 0.5,
+    "n_particles": null,
+    "n_modes": 1,
+    "text": "spin-1/2 on each site"
+  },
+  "hamiltonian": {
+    "model_type": "ising",
+    "parameters": {
+      "Jz": 1.0,
+      "hx": 0.0,
+      "hz": 1.0
+    },
+    "parameter_ranges": null,
+    "text": "ISING model with Jz=1.0, hx=0.0, hz=1.0"
+  },
+  "results": {}
+}

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, model_validator, field_validator
-from typing import Literal, Any, Optional, Union
+from typing import Literal, Any, Optional, Union, Dict, List
 import re
 import numpy as np
 
@@ -7,6 +7,7 @@ import numpy as np
 import netket.graph as nkgraph
 import netket.hilbert as nkh
 import netket.experimental as nkx
+import netket.operator as nko
 from netket.experimental.operator.fermion import destroy as c
 from netket.experimental.operator.fermion import create as cdag
 
@@ -228,9 +229,9 @@ class HilbertSpaceSchema(BaseModel):
         description="Type of Hilbert space"
     )
     
-    spin: float = Field(
+    spin: Optional[float] = Field(
         default=0.5, 
-        description="Spin value (for spin/fermion spaces)"
+        description="Spin value (for spin/fermion spaces); None for spinless fermions"
     )
     
     n_particles: Optional[int] = Field(
@@ -263,8 +264,8 @@ class HilbertSpaceSchema(BaseModel):
         """Parse Hilbert space text descriptions."""
         text_lower = text.lower()
         
-        # Get particle number if specified
-        number_match = re.search(r'(\d+)\s*(?:particles?|fermions?|bosons?)', text_lower)
+        # Get particle number if specified (allow for words like 'spinless' in between)
+        number_match = re.search(r'(\d+)\s*(?:\w+\s+)?(particles?|fermions?|bosons?)', text_lower)
         n_particles = int(number_match.group(1)) if number_match else None
         
         # Get spin if specified
@@ -279,6 +280,13 @@ class HilbertSpaceSchema(BaseModel):
         else:
             spin = 0.5  # Default spin-1/2
         
+        # Spinless fermion
+        if "spinless" in text_lower and "fermion" in text_lower:
+            return {
+                "space_type": "fermion",
+                "spin": None,
+                "n_particles": n_particles
+            }
         # Fermionic space
         if "fermion" in text_lower:
             return {
@@ -323,11 +331,11 @@ class HilbertSpaceSchema(BaseModel):
         elif self.space_type == "fermion":
             if self.n_particles is None:
                 raise ValueError("Number of particles must be specified for fermion space")
-            return nkx.hilbert.SpinOrbitalFermions(
-                graph.n_nodes, 
-                s=self.spin, 
-                n_fermions=self.n_particles
-            )
+            # Spinless fermion
+            if self.spin is None:
+                return nkx.hilbert.SpinOrbitalFermions(graph.n_nodes, n_fermions=self.n_particles, s=None)
+            else:
+                return nkx.hilbert.SpinOrbitalFermions(graph.n_nodes, s=self.spin, n_fermions=self.n_particles)
         
         elif self.space_type == "boson":
             if self.n_particles is None:
@@ -372,166 +380,231 @@ class HilbertSpaceSchema(BaseModel):
 
 class HamiltonianSchema(BaseModel):
     """
-    Represents quantum Hamiltonians with text-based specification.
+    Represents quantum Hamiltonians with predefined components.
     
-    Converts text descriptions like "Hubbard model with t=1, U=4" to NetKet Hamiltonian parameters.
+    Supports common models like SSH, Hubbard, Heisenberg, etc. with simple parameter specification.
     """
     
-    # Fermion parameters
-    hopping: float = Field(default=0.0, description="Hopping strength t")
-    hubbard_u: float = Field(default=0.0, description="Hubbard interaction U")
-    coulomb_v: float = Field(default=0.0, description="Nearest-neighbor Coulomb V")
-    zeeman_b: float = Field(default=0.0, description="Zeeman field B")
+    # Model type
+    model_type: str = Field(description="Hamiltonian model type")
     
-    # Spin parameters
-    heisenberg_j: float = Field(default=0.0, description="Heisenberg exchange J")
-    ising_jz: float = Field(default=0.0, description="Ising coupling Jz")
-    transverse_hx: float = Field(default=0.0, description="Transverse field hx")
-    longitudinal_hz: float = Field(default=0.0, description="Longitudinal field hz")
+    # Parameters for different models
+    parameters: Dict[str, float] = Field(default_factory=dict, description="Model parameters")
     
-    # Boson parameters
-    chemical_potential: float = Field(default=0.0, description="Chemical potential μ")
-    
-    # Model type inference
-    model_type: Optional[str] = Field(default=None, description="Inferred model type")
+    # Parameter ranges for sweeps
+    parameter_ranges: Optional[Dict[str, List[float]]] = Field(
+        default=None, 
+        description="Parameter ranges for sweeps, e.g., {'t2': [0.1, 0.5, 1.0, 1.5, 2.0]}"
+    )
     
     text: str | None = Field(
         default=None,
-        description="Text description like 'Hubbard model with t=1, U=4' or 'Heisenberg model with J=1, hx=0.5'"
+        description="Text description like 'SSH model with t1=1, t2=0.2'"
     )
     
     @model_validator(mode='before')
     @classmethod
     def parse_from_text(cls, data: dict) -> dict:
-        """Parse text description to populate Hamiltonian parameters."""
+        """Parse text description to populate model_type and parameters."""
         if 'text' in data and data['text']:
             text = data.pop('text').strip()
+            
+            # Parse various Hamiltonian descriptions
             parsed = cls._parse_hamiltonian_text(text)
-            data.update(parsed)
+            data['model_type'] = parsed['model_type']
+            data['parameters'] = parsed['parameters']
+            
         return data
     
     @classmethod
     def _parse_hamiltonian_text(cls, text: str) -> dict:
         """Parse Hamiltonian text descriptions."""
         text_lower = text.lower()
-        params = {}
         
-        # Model type detection
-        if "hubbard" in text_lower:
-            params["model_type"] = "hubbard"
+        # SSH Model
+        if "ssh" in text_lower:
+            t1 = cls._extract_parameter(text, "t1", 1.0)
+            t2 = cls._extract_parameter(text, "t2", 0.2)
+            return {
+                "model_type": "ssh",
+                "parameters": {"t1": t1, "t2": t2}
+            }
+        
+        # Hubbard Model
+        elif "hubbard" in text_lower:
+            t = cls._extract_parameter(text, "t", 1.0)
+            u = cls._extract_parameter(text, "u", 4.0)
+            return {
+                "model_type": "hubbard", 
+                "parameters": {"t": t, "U": u}
+            }
+        
+        # Fermion Hopping
+        elif "fermion" in text_lower and "hopping" in text_lower:
+            t = cls._extract_parameter(text, "t", 1.0)
+            b = cls._extract_parameter(text, "b", 0.0)
+            return {
+                "model_type": "fermion_hopping",
+                "parameters": {"t": t, "B": b}
+            }
+        
+        # Heisenberg Model
         elif "heisenberg" in text_lower:
-            params["model_type"] = "heisenberg"
-        elif "ising" in text_lower:
-            params["model_type"] = "ising"
-        elif "kitaev" in text_lower:
-            params["model_type"] = "kitaev"
+            j = cls._extract_parameter(text, "j", 1.0)
+            return {
+                "model_type": "heisenberg",
+                "parameters": {"J": j}
+            }
         
-        # Parameter extraction patterns
-        param_patterns = [
-            (r't\s*=\s*([+-]?\d*\.?\d+)', 'hopping'),
-            (r'u\s*=\s*([+-]?\d*\.?\d+)', 'hubbard_u'),
-            (r'v\s*=\s*([+-]?\d*\.?\d+)', 'coulomb_v'),
-            (r'b\s*=\s*([+-]?\d*\.?\d+)', 'zeeman_b'),
-            (r'j\s*=\s*([+-]?\d*\.?\d+)', 'heisenberg_j'),
-            (r'jz\s*=\s*([+-]?\d*\.?\d+)', 'ising_jz'),
-            (r'hx\s*=\s*([+-]?\d*\.?\d+)', 'transverse_hx'),
-            (r'hz\s*=\s*([+-]?\d*\.?\d+)', 'longitudinal_hz'),
-            (r'μ\s*=\s*([+-]?\d*\.?\d+)|mu\s*=\s*([+-]?\d*\.?\d+)', 'chemical_potential'),
+        # Ising Model
+        elif "ising" in text_lower:
+            jz = cls._extract_parameter(text, "jz", 1.0)
+            hx = cls._extract_parameter(text, "hx", 0.0)
+            hz = cls._extract_parameter(text, "hz", 0.0)
+            return {
+                "model_type": "ising",
+                "parameters": {"Jz": jz, "hx": hx, "hz": hz}
+            }
+        
+        # Kitaev Model
+        elif "kitaev" in text_lower:
+            jx = cls._extract_parameter(text, "jx", 1.0)
+            jy = cls._extract_parameter(text, "jy", 1.0)
+            jz = cls._extract_parameter(text, "jz", 1.0)
+            return {
+                "model_type": "kitaev",
+                "parameters": {"Jx": jx, "Jy": jy, "Jz": jz}
+            }
+        
+        else:
+            raise ValueError(f"Could not parse Hamiltonian description: '{text}'. "
+                           f"Supported models: SSH, Hubbard, Fermion Hopping, Heisenberg, Ising, Kitaev")
+    
+    @classmethod
+    def _extract_parameter(cls, text: str, param_name: str, default: float) -> float:
+        """Extract parameter value from text."""
+        # Look for patterns like "t1=1.5", "t1 = 1.5", "t1: 1.5"
+        patterns = [
+            rf"{param_name}\s*=\s*([+-]?\d*\.?\d+)",
+            rf"{param_name}\s*:\s*([+-]?\d*\.?\d+)",
         ]
         
-        for pattern, param_name in param_patterns:
-            match = re.search(pattern, text_lower)
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                value = float(match.group(1) or match.group(2))
-                params[param_name] = value
+                return float(match.group(1))
         
-        # Special cases for common model names
-        if "hubbard model" in text_lower and not any(k in params for k in ['hopping', 'hubbard_u']):
-            # Default Hubbard parameters if not specified
-            params.setdefault("hopping", 1.0)
-            params.setdefault("hubbard_u", 4.0)
-        
-        elif "heisenberg model" in text_lower and not any(k in params for k in ['heisenberg_j', 'transverse_hx']):
-            # Default Heisenberg parameters if not specified
-            params.setdefault("heisenberg_j", 1.0)
-        
-        if not params.get("model_type") and all(params.get(k, 0.0) == 0.0 for k in [
-            "hopping", "hubbard_u", "coulomb_v", "zeeman_b",
-            "heisenberg_j", "ising_jz", "transverse_hx", "longitudinal_hz", "chemical_potential"
-        ]):
-            raise ValueError(f"Could not parse Hamiltonian description: '{text}'. "
-                             "Supported formats: 'Hubbard model with t=1, U=4', 'Heisenberg model with J=1, hx=0.5', etc.")
-        
-        return params
+        return default
     
-    def to_netket_hamiltonian(self, hilbert: Any, graph: Any) -> Any:
-        """Convert to NetKet Hamiltonian operator."""
-        from fermion_builder import Hop, Hubbard, Coulomb, Zeeman
+    def build_netket_hamiltonian(self, hilbert: Any, graph: Any, system_hilbert=None) -> Any:
+        """Build NetKet Hamiltonian operator from specification."""
+        L = graph.n_nodes
+        H = 0
         
-        hamiltonian = 0.0
+        # Check if we're dealing with spin-1/2 fermions using the schema
+        is_spin_fermion = False
+        if system_hilbert and system_hilbert.space_type == "fermion" and system_hilbert.spin == 0.5:
+            is_spin_fermion = True
         
-        # Fermion terms
-        if self.hopping != 0.0:
-            hamiltonian += Hop(hilbert, graph, self.hopping)
+        if self.model_type == "ssh":
+            t1 = self.parameters.get("t1", 1.0)
+            t2 = self.parameters.get("t2", 0.2)
+            for i in range(L - 1):
+                t = t2 if i % 2 == 0 else t1
+                if is_spin_fermion:
+                    # For spin-1/2 fermions, use spin-up component (sz=1)
+                    H += -t * (cdag(hilbert, i, sz=1) * c(hilbert, i+1, sz=1) + 
+                              cdag(hilbert, i+1, sz=1) * c(hilbert, i, sz=1))
+                else:
+                    # For spinless fermions
+                    H += -t * (cdag(hilbert, i) * c(hilbert, i+1) + 
+                              cdag(hilbert, i+1) * c(hilbert, i))
         
-        if self.hubbard_u != 0.0:
-            hamiltonian += Hubbard(hilbert, graph, self.hubbard_u)
+        elif self.model_type == "hubbard":
+            t = self.parameters.get("t", 1.0)
+            U = self.parameters.get("U", 4.0)
+            # Full spinful Hubbard model: sum hopping over both spins, and on-site U n_up n_down
+            for i in range(L - 1):
+                # Hopping for both spins
+                H += -t * sum(
+                    cdag(hilbert, i, sz) * c(hilbert, i+1, sz) + cdag(hilbert, i+1, sz) * c(hilbert, i, sz)
+                    for sz in [1, -1]
+                )
+            # On-site interaction U n_up n_down
+            for i in range(L):
+                H += U * cdag(hilbert, i, sz=1) * c(hilbert, i, sz=1) * cdag(hilbert, i, sz=-1) * c(hilbert, i, sz=-1)
         
-        if self.coulomb_v != 0.0:
-            hamiltonian += Coulomb(hilbert, graph, self.coulomb_v)
+        elif self.model_type == "fermion_hopping":
+            t = self.parameters.get("t", 1.0)
+            B = self.parameters.get("B", 0.0)
+            for i in range(L - 1):
+                if is_spin_fermion:
+                    # For spin-1/2 fermions, use spin-up component (sz=1)
+                    H += -t * (cdag(hilbert, i, sz=1) * c(hilbert, i+1, sz=1) + 
+                              cdag(hilbert, i+1, sz=1) * c(hilbert, i, sz=1))
+                else:
+                    # For spinless fermions
+                    H += -t * (cdag(hilbert, i) * c(hilbert, i+1) + 
+                              cdag(hilbert, i+1) * c(hilbert, i))
+            if B != 0:
+                for i in range(L):
+                    if is_spin_fermion:
+                        # For spin-1/2 fermions, use spin-up component (sz=1)
+                        H += B * cdag(hilbert, i, sz=1) * c(hilbert, i, sz=1)
+                    else:
+                        # For spinless fermions
+                        H += B * cdag(hilbert, i) * c(hilbert, i)
         
-        if self.zeeman_b != 0.0:
-            hamiltonian += Zeeman(hilbert, graph, self.zeeman_b)
+        elif self.model_type == "heisenberg":
+            J = self.parameters.get("J", 1.0)
+            # Heisenberg model for spins
+            if system_hilbert and system_hilbert.space_type == "spin":
+                H = J * nko.Heisenberg(hilbert)
+            else:
+                raise ValueError("Heisenberg model requires spin Hilbert space")
         
-        # Spin terms (would need to implement spin operators)
-        # For now, return fermion Hamiltonian
-        # TODO: Add spin Hamiltonian construction
+        elif self.model_type == "ising":
+            Jz = self.parameters.get("Jz", 1.0)
+            hx = self.parameters.get("hx", 0.0)
+            hz = self.parameters.get("hz", 0.0)
+            # Ising model for spins
+            if system_hilbert and system_hilbert.space_type == "spin":
+                H = Jz * nko.Ising(hilbert, graph, h=hx)
+                if hz != 0:
+                    H += hz * nko.LocalOperator(hilbert, nko.PauliZ, 0)
+            else:
+                raise ValueError("Ising model requires spin Hilbert space")
         
-        return hamiltonian
+        elif self.model_type == "kitaev":
+            Jx = self.parameters.get("Jx", 1.0)
+            Jy = self.parameters.get("Jy", 1.0)
+            Jz = self.parameters.get("Jz", 1.0)
+            # Kitaev model (simplified implementation)
+            if system_hilbert and system_hilbert.space_type == "spin":
+                # This is a simplified Kitaev implementation
+                # In practice, you'd need to implement the specific Kitaev interactions
+                H = Jx * nko.LocalOperator(hilbert, nko.sigmax, 0) + \
+                    Jy * nko.LocalOperator(hilbert, nko.sigmay, 0) + \
+                    Jz * nko.LocalOperator(hilbert, nko.sigmaz, 0)
+            else:
+                raise ValueError("Kitaev model requires spin Hilbert space")
+        
+        else:
+            raise ValueError(f"Unsupported model type: {self.model_type}")
+        
+        return H
+    
+    def get_parameters(self) -> Dict[str, float]:
+        """Get current parameters as a dictionary."""
+        return self.parameters.copy()
     
     @model_validator(mode='after')
     def render_to_text(self):
         """Generate canonical text representation."""
-        terms = []
-        
-        # Determine model type if not set
-        if not self.model_type:
-            if self.hubbard_u != 0.0 or self.hopping != 0.0:
-                self.model_type = "hubbard"
-            elif self.heisenberg_j != 0.0:
-                self.model_type = "heisenberg"
-            elif self.ising_jz != 0.0:
-                self.model_type = "ising"
-        
-        # Build description
-        if self.model_type:
-            terms.append(f"{self.model_type.title()} model")
-        
-        # Add parameters
-        param_descriptions = []
-        if self.hopping != 0.0:
-            param_descriptions.append(f"t={self.hopping}")
-        if self.hubbard_u != 0.0:
-            param_descriptions.append(f"U={self.hubbard_u}")
-        if self.coulomb_v != 0.0:
-            param_descriptions.append(f"V={self.coulomb_v}")
-        if self.zeeman_b != 0.0:
-            param_descriptions.append(f"B={self.zeeman_b}")
-        if self.heisenberg_j != 0.0:
-            param_descriptions.append(f"J={self.heisenberg_j}")
-        if self.ising_jz != 0.0:
-            param_descriptions.append(f"Jz={self.ising_jz}")
-        if self.transverse_hx != 0.0:
-            param_descriptions.append(f"hx={self.transverse_hx}")
-        if self.longitudinal_hz != 0.0:
-            param_descriptions.append(f"hz={self.longitudinal_hz}")
-        
-        if param_descriptions:
-            terms.append("with " + ", ".join(param_descriptions))
-        
-        self.text = " ".join(terms) if terms else "empty Hamiltonian"
+        if not self.text:
+            param_str = ", ".join([f"{k}={v}" for k, v in self.parameters.items()])
+            self.text = f"{self.model_type.upper()} model with {param_str}"
         return self
-
 
 # Utility function for creating schemas from text
 def create_lattice_from_text(text: str) -> LatticeSchema:

@@ -83,24 +83,24 @@ cd MCP_NetKet
 
 Try this step-by-step demo to see the MCP server in action! This demonstrates a quantum phase transition where the system changes from an ordered to a disordered phase.
 
-### Step 1: Setup and Run Analysis
+### Step 1: Setup System
 ```
-Create a quantum system for the Ising model on a 16-site chain with spin-1/2 particles. Set the Ising Hamiltonian with Jz=1 and transverse field hx ranging from 0 to 2.
-```
-
-### Step 2: Create Energy Gap Plot
-```
-Then perform a parameter sweep over hx to analyze the quantum phase transition. Create a plot showing the energy gap as a function of the transverse field hx for the Ising model.
+Create a quantum system for the Ising model on a 16-site chain with spin-1/2 particles. Set the Ising Hamiltonian with Jz=1 and a transverse field hx ranging from 0 to 2.
 ```
 
-### Step 3: Create Degeneracy Plot
+### Step 2: Run Analysis & Plot Gap
 ```
-Create a plot showing the ground state degeneracy as a function of the transverse field hx. This will show how the number of degenerate ground states changes across the phase transition.
+Perform a parameter sweep over hx. From the results, create a plot showing the energy gap as a function of the transverse field.
+```
+
+### Step 3: Plot Degeneracy
+```
+Using the same sweep results, create a plot showing the ground state degeneracy as a function of the transverse field.
 ```
 
 ### Step 4: Display and Interpret
 ```
-Display both plots and explain what we observe about the Ising model quantum phase transition - specifically how the energy gap closes and the degeneracy drops from 2 to 1 at the critical point around hx=1.
+Display both plots and explain what we observe about the Ising model quantum phase transition, specifically how the energy gap closes and the degeneracy drops from 2 to 1 at the critical point around hx=1.
 ```
 
 **Expected Results:**
@@ -112,19 +112,19 @@ This demo showcases the power of the flexible `analyze_eigenstate` and `plot_xy`
 
 ## 🔬 Analysis Scripts
 
-This repository includes ready-to-run analysis scripts that demonstrate how to use the server to explore key physical phenomena. All generated plots are saved in a dedicated folder under `quantum_systems/`.
+This repository includes ready-to-run analysis scripts that demonstrate how to use the server to explore key physical phenomena. 
+
+All generated plots are saved in a dedicated folder under `/tmp/quantum_systems/`. The `/tmp` directory is a standard folder for temporary files at the root of your filesystem, which ensures compatibility with read-only environments. You can access it via the terminal with `cd /tmp` or, on macOS, using the Finder's "Go to Folder" command (Shift+Cmd+G). **Please note that its contents may be cleared upon system restart.**
 
 ### 1. SSH Model: Topological Edge States
-
-- **Script:** `ssh_full_spectrum_analysis.py`
-- **Physics:** Visualizes the symmetric energy spectrum and the zero-energy edge states characteristic of the topological phase in the Su-Schrieffer-Heeger (SSH) model.
+- **Script:** `analyze_ssh.py`
+- **Physics:** Visualizes the full energy spectrum and the zero-energy edge states characteristic of the topological phase in the Su-Schrieffer-Heeger (SSH) model.
 - **Usage:** 
   ```bash
-  python ssh_full_spectrum_analysis.py
+  python analyze_ssh.py
   ```
 
 ### 2. Hubbard Model: Mott Metal-Insulator Transition
-
 - **Script:** `analyze_hubbard.py`
 - **Physics:** Calculates and plots the Mott gap as a function of the on-site repulsion `U`, demonstrating the transition from a metal to a Mott insulator.
 - **Usage:**
@@ -133,9 +133,8 @@ This repository includes ready-to-run analysis scripts that demonstrate how to u
   ```
 
 ### 3. Ising Model: Quantum Phase Transition
-
 - **Script:** `analyze_ising.py`
-- **Physics:** Shows the quantum phase transition by plotting the energy gap and ground-state degeneracy as a function of the transverse magnetic field `hx`.
+- **Physics:** Shows the quantum phase transition by plotting both the energy gap and ground-state degeneracy as a function of the transverse magnetic field `hx`.
 - **Usage:**
   ```bash
   python analyze_ising.py

@@ -50,21 +50,30 @@ class QuantumSystemState:
         return obj
 
 class NetKetJSONManager:
-    def __init__(self, storage_dir: str = "quantum_systems"):
+    def __init__(self, storage_dir: str = "./quantum_systems"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(exist_ok=True)
         self.systems: Dict[str, QuantumSystemState] = {}
         self.current_system_id: Optional[str] = None
         self._load_existing_systems()
 
+    def _get_system_dir(self, system_id: str) -> Path:
+        system_dir = self.storage_dir / system_id
+        system_dir.mkdir(exist_ok=True)
+        return system_dir
+
     def _system_file(self, system_id: str) -> Path:
-        return self.storage_dir / f"{system_id}.json"
+        return self._get_system_dir(system_id) / f"{system_id}.json"
 
     def create_system(self, description: Optional[str] = None) -> str:
         system = QuantumSystemState()
         if description:
             # Optionally parse description to fill in components
             pass
+        
+        # Create the directory for the new system
+        self._get_system_dir(system.system_id)
+        
         self.systems[system.system_id] = system
         self.current_system_id = system.system_id
         self.save_system(system.system_id)
@@ -102,6 +111,10 @@ class NetKetJSONManager:
         if not system_id or system_id not in self.systems:
             raise ValueError("No such system to save.")
         system = self.systems[system_id]
+        
+        # Ensure the directory exists
+        self._get_system_dir(system_id)
+        
         file_path = self._system_file(system_id)
         with open(file_path, 'w') as f:
             json.dump(system.to_dict(), f, indent=2)
@@ -131,7 +144,7 @@ class NetKetJSONManager:
         ]
 
     def _load_existing_systems(self):
-        for file_path in self.storage_dir.glob("system_*.json"):
+        for file_path in self.storage_dir.glob("system_*/system_*.json"):
             with open(file_path, 'r') as f:
                 data = json.load(f)
             system = QuantumSystemState.from_dict(data)

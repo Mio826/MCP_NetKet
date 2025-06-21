@@ -10,6 +10,7 @@ from scipy.sparse.linalg import eigsh
 import matplotlib.pyplot as plt
 import io
 import base64
+import shutil
 
 # Create the MCP server object
 mcp = FastMCP('NetKet Quantum Many-Body Physics Server')
@@ -538,14 +539,18 @@ def generate_plot(system_id: str, plot_type: str, file_path: Optional[str] = Non
         raise ValueError(f"No data available for plot type: {plot_type}")
     
     if file_path:
-        # Save plot to file
-        plt.savefig(file_path, dpi=150, bbox_inches='tight')
+        # Save plot to file inside the system's directory
+        system_dir = json_manager.storage_dir / system_id
+        system_dir.mkdir(exist_ok=True)
+        full_path = system_dir / file_path
+        
+        plt.savefig(full_path, dpi=150, bbox_inches='tight')
         plt.close()
         
         return {
             "system_id": system_id,
             "plot_type": plot_type,
-            "file_path": file_path,
+            "file_path": str(full_path),
             "description": f"{plot_type.replace('_', ' ').title()} plot saved to file"
         }
     else:
@@ -635,16 +640,18 @@ def delete_quantum_system(system_id: str) -> Dict[str, Any]:
     if system_id not in json_manager.systems:
         raise ValueError(f"System {system_id} not found")
     
-    # Remove from memory and delete file
+    # Remove from memory
     del json_manager.systems[system_id]
-    file_path = json_manager._system_file(system_id)
-    if file_path.exists():
-        file_path.unlink()
+
+    # Delete the entire system directory
+    system_dir = json_manager.storage_dir / system_id
+    if system_dir.exists():
+        shutil.rmtree(system_dir)
     
     return {
         "system_id": system_id,
         "status": "deleted",
-        "message": "System deleted successfully"
+        "message": "System and all associated files deleted successfully"
     }
 
 def _build_hamiltonian_from_spec(system) -> Any:

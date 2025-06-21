@@ -1,65 +1,79 @@
 #!/usr/bin/env python3
 """
-SSH model: full spectrum and edge state profile using MCP tools.
+Analysis of the SSH model edge states and full spectrum.
 """
+
 import numpy as np
 import matplotlib.pyplot as plt
-from mcp_server import create_quantum_system, set_lattice, set_hilbert_space, set_hamiltonian, parameter_sweep, compute_energy_spectrum, analyze_ground_state
+from pathlib import Path
+from mcp_server import (
+    create_quantum_system, set_lattice, set_hilbert_space,
+    set_hamiltonian, compute_energy_spectrum, json_manager
+)
 
-def main():
-    L = 12
-    t1 = 1.0
-    ratios = np.linspace(0.1, 2.0, 40)  # t2/t1 values to sweep
-    t2_values = (ratios * t1).tolist()
+def analyze_ssh_model():
+    print("Analyzing SSH Model Edge States and Spectrum")
+    print("=" * 45)
     
-    # --- Full spectrum for 1 fermion ---
-    n_fermions = 1
-    system_id = create_quantum_system("SSH full spectrum")['system_id']
-    set_lattice(system_id, f"chain of {L} sites")
-    set_hilbert_space(system_id, f"{n_fermions} fermion")
-    set_hamiltonian(system_id, f"SSH model with t1={t1}", parameter_ranges={"t2": t2_values})
-    sweep = parameter_sweep(system_id, "t2")
-    all_eigenvalues = np.array(sweep["all_eigenvalues"])
-    plt.figure(figsize=(8, 5))
-    for i in range(all_eigenvalues.shape[1]):
-        plt.plot(ratios, all_eigenvalues[:, i], color='black', lw=0.8)
-    plt.axvline(1.0, color='red', linestyle='--', label='$t_2/t_1 = 1$')
-    plt.xlabel('$t_2 / t_1$', fontsize=14)
-    plt.ylabel('Eigenvalue', fontsize=14)
-    plt.title(f'SSH Spectrum with 1 Fermion on {L} Sites', fontsize=15)
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("ssh_full_spectrum.png", dpi=150)
-    plt.close()
-    print("Saved: ssh_full_spectrum.png")
+    # Create the main analysis system
+    sys_id = create_quantum_system("SSH Model Analysis")['system_id']
     
-    # --- Edge state profile for zero mode at t2/t1=0.2 (1 spinless fermion) ---
-    idx = np.argmin(np.abs(ratios - 0.2))
-    t2_topo = t2_values[idx]
-    system_id3 = create_quantum_system("SSH zero mode profile")['system_id']
-    set_lattice(system_id3, f"chain of {L} sites")
-    set_hilbert_space(system_id3, f"1 spinless fermion")
-    set_hamiltonian(system_id3, f"SSH model with t1={t1}, t2={t2_topo}")
-    spectrum = compute_energy_spectrum(system_id3, num_eigenvalues=L)
-    # Extract eigenvalues and eigenvectors
-    from mcp_server import json_manager
-    system = json_manager.systems[system_id3]
+    # SSH model parameters
+    L = 24  # Number of sites
+    t1 = 1.0  # Strong hopping
+    t2 = 0.2  # Weak hopping (topological phase)
+    
+    # Set up the system for a SINGLE SPINLESS fermion
+    set_lattice(sys_id, f"chain of {L} sites")
+    set_hilbert_space(sys_id, "1 spinless fermion")  # Correctly specify spinless
+    set_hamiltonian(sys_id, f"SSH model with t1={t1}, t2={t2}")
+    
+    # Compute full spectrum (ensure we get all eigenvalues for a small system)
+    spectrum = compute_energy_spectrum(sys_id, num_eigenvalues=L)
+    
+    # Retrieve full results from the json_manager to get eigenvectors
+    system = json_manager.systems[sys_id]
     eigvals = np.array(system.results["energy_spectrum"]["eigenvalues"])
     eigvecs = np.array(system.results["energy_spectrum"]["eigenvectors"])
-    zero_idx = np.argmin(np.abs(eigvals))
-    psi_zero = eigvecs[:, zero_idx]
-    prob_density = np.abs(psi_zero)**2
-    plt.figure(figsize=(6, 4))
-    plt.plot(range(len(prob_density)), prob_density, 'o-')
-    plt.xlabel("Site index")
-    plt.ylabel(r"$|\psi(i)|^2$")
-    plt.title(f"Spatial profile of zero-energy eigenstate at $t_2/t_1 = {t2_topo/t1:.2f}$ (1 spinless fermion)")
-    plt.grid(True)
+
+    # Plot full spectrum
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(len(eigvals)), eigvals, 'o-', markersize=6, linewidth=2)
+    plt.xlabel("Eigenvalue index", fontsize=12)
+    plt.ylabel("Energy", fontsize=12)
+    plt.title(f"SSH Model Full Spectrum (t1={t1}, t2={t2})", fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.axhline(y=0, color='red', linestyle='--', alpha=0.7, label='Zero Energy')
+    plt.legend()
     plt.tight_layout()
-    plt.savefig("ssh_edge_state_profile.png", dpi=150)
+    
+    # Save full spectrum plot
+    system_dir = Path("quantum_systems") / sys_id
+    system_dir.mkdir(exist_ok=True)
+    spectrum_plot_path = system_dir / "ssh_full_spectrum.png"
+    plt.savefig(spectrum_plot_path, dpi=150)
     plt.close()
-    print("Saved: ssh_edge_state_profile.png (zero mode, spinless)")
+    print(f"Saved: {spectrum_plot_path}")
+    
+    # Find and analyze the zero-energy mode, not the ground state
+    zero_mode_idx = np.argmin(np.abs(eigvals))
+    psi_zero_mode = eigvecs[:, zero_mode_idx]
+    spatial_profile = np.abs(psi_zero_mode)**2
+    
+    # Plot edge state profile
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(len(spatial_profile)), spatial_profile, 'o-', markersize=4, linewidth=2)
+    plt.xlabel("Site index", fontsize=12)
+    plt.ylabel("|ψ(i)|²", fontsize=12)
+    plt.title(f"SSH Model Edge State Profile (t1={t1}, t2={t2})", fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    # Save edge state plot
+    edge_plot_path = system_dir / "ssh_edge_state_profile.png"
+    plt.savefig(edge_plot_path, dpi=150)
+    plt.close()
+    print(f"Saved: {edge_plot_path} (zero mode, spinless)")
 
 if __name__ == "__main__":
-    main() 
+    analyze_ssh_model() 

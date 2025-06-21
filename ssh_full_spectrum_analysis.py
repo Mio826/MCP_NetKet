@@ -47,8 +47,8 @@ def analyze_ssh_model():
     plt.legend()
     plt.tight_layout()
     
-    # Save full spectrum plot
-    system_dir = Path("quantum_systems") / sys_id
+    # Save full spectrum plot using the json_manager's path
+    system_dir = json_manager.storage_dir / sys_id
     system_dir.mkdir(exist_ok=True)
     spectrum_plot_path = system_dir / "ssh_full_spectrum.png"
     plt.savefig(spectrum_plot_path, dpi=150)
@@ -69,7 +69,7 @@ def analyze_ssh_model():
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     
-    # Save edge state plot
+    # Save edge state plot using the json_manager's path
     edge_plot_path = system_dir / "ssh_edge_state_profile.png"
     plt.savefig(edge_plot_path, dpi=150)
     plt.close()

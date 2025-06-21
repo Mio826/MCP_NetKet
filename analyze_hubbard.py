@@ -52,8 +52,8 @@ def analyze_hubbard_transition():
     plt.grid(True)
     plt.tight_layout()
     
-    # Save plot in the system directory
-    system_dir = Path("quantum_systems") / sys_id
+    # Save plot in the system directory using the json_manager's path
+    system_dir = json_manager.storage_dir / sys_id
     system_dir.mkdir(exist_ok=True)
     plot_path = system_dir / "hubbard_phase_transition.png"
     plt.savefig(plot_path, dpi=150)

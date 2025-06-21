@@ -37,6 +37,79 @@ spectrum = compute_energy_spectrum(sys_id, num_eigenvalues=1)
 print(f"Ground State Energy: {spectrum['ground_state_energy']}")
 ```
 
+## 🖥️ Lucien AI Desktop Integration
+
+Integrate this MCP server with [Lucien AI desktop](https://pathintegral.notion.site/how-to-use-lucien#2159dd60ece1807986c3f9ab795a1a05) for an enhanced AI-powered quantum physics research experience!
+
+### Step 1: Install Lucien AI
+1. Download and install [Lucien AI desktop](https://pathintegral.notion.site/how-to-use-lucien#2159dd60ece1807986c3f9ab795a1a05)
+2. Log in to your Lucien account
+3. In Lucien's **Settings**, follow the instructions to install `uv` (Lucien's package manager)
+
+### Step 2: Clone the Repository
+```bash
+git clone <your-repo-url>
+cd MCP_NetKet
+```
+
+### Step 3: Configure MCP Server in Lucien
+1. Open Lucien AI desktop
+2. Go to **Settings** → **MCP Servers**
+3. Click **Add Server** and configure:
+
+   **Server Configuration:**
+   - **Server name**: `NetKet-MCP`
+   - **Command**: `uv`
+   - **Arguments**: `run mcp run /path/to/your/MCP_NetKet/mcp_server.py`
+     *(Replace with your actual local path to mcp_server.py)*
+   - **Environment**: 
+     - Variable: `UV_PROJECT_ENVIRONMENT`
+     - Value: `/path/to/your/MCP_NetKet`
+     *(Replace with your actual local path to the MCP_NetKet folder)*
+
+4. Click **Save**
+
+### Step 4: Start Using!
+- The NetKet MCP server will now be available in your Lucien AI conversations
+- You can use natural language to create quantum systems, run simulations, and analyze results
+- Try the [Interactive Demo](#-interactive-demo-ising-model-quantum-phase-transition) below!
+
+**Example Lucien conversation:**
+```
+"Create a quantum system for the SSH model on a 24-site chain with 1 fermion and analyze its energy spectrum"
+```
+
+## 🎯 Interactive Demo: Ising Model Quantum Phase Transition
+
+Try this step-by-step demo to see the MCP server in action! This demonstrates a quantum phase transition where the system changes from an ordered to a disordered phase.
+
+### Step 1: Setup and Run Analysis
+```
+Create a quantum system for the Ising model on a 16-site chain with spin-1/2 particles. Set the Ising Hamiltonian with Jz=1 and transverse field hx ranging from 0 to 2.
+```
+
+### Step 2: Create Energy Gap Plot
+```
+Then perform a parameter sweep over hx to analyze the quantum phase transition. Create a plot showing the energy gap as a function of the transverse field hx for the Ising model.
+```
+
+### Step 3: Create Degeneracy Plot
+```
+Create a plot showing the ground state degeneracy as a function of the transverse field hx. This will show how the number of degenerate ground states changes across the phase transition.
+```
+
+### Step 4: Display and Interpret
+```
+Display both plots and explain what we observe about the Ising model quantum phase transition - specifically how the energy gap closes and the degeneracy drops from 2 to 1 at the critical point around hx=1.
+```
+
+**Expected Results:**
+- **Energy gap**: Closes at the critical point (hx ≈ 1)
+- **Degeneracy**: Drops from 2 (ordered phase) to 1 (disordered phase) at the critical point
+- **Physical interpretation**: The system transitions from a magnetically ordered state to a disordered state
+
+This demo showcases the power of the flexible `analyze_eigenstate` and `plot_xy` tools for custom quantum physics analysis!
+
 ## 🔬 Analysis Scripts
 
 This repository includes ready-to-run analysis scripts that demonstrate how to use the server to explore key physical phenomena. All generated plots are saved in a dedicated folder under `quantum_systems/`.
@@ -90,7 +163,9 @@ The server operates on a simple, schema-based design. You define components of y
 - `set_hamiltonian()`: Defines the model and its parameters.
 - `compute_energy_spectrum()`: Performs exact diagonalization.
 - `analyze_ground_state()`: Calculates properties of the lowest-energy state.
+- `analyze_eigenstate()`: Analyzes any specific eigenstate by index.
 - `parameter_sweep()`: Runs calculations over a range of parameter values.
+- `plot_xy()`: Creates custom 2D plots from any data.
 - `generate_plot()`: Creates plots from analysis results.
 - `list_quantum_systems()`: Lists all currently managed systems.
 - `delete_quantum_system()`: Removes a system and all its data.

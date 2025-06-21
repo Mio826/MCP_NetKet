@@ -1,4 +1,5 @@
 from fastmcp import FastMCP
+from mcp.types import TextContent, ImageContent
 from netket_schemas import LatticeSchema, HilbertSpaceSchema, HamiltonianSchema
 from netket_jsons import NetKetJSONManager, QuantumSystemState
 from typing import Literal, Optional, Dict, Any, List, Union
@@ -245,103 +246,15 @@ def compute_energy_spectrum(system_id: str, num_eigenvalues: int = 10, which: st
 def analyze_ground_state(system_id: str) -> Dict[str, Any]:
     '''Analyze the ground state properties of a quantum system.
     
-    This tool computes various properties of the ground state, including
-    energy, degeneracy, and spatial profile for fermionic systems.
-    It automatically computes the energy spectrum if not already available.
+    This is a convenience function that calls analyze_eigenstate with index 0.
     
     Args:
         system_id: The ID of the quantum system
         
     Returns:
         Dictionary containing ground state analysis
-        
-    Examples:
-        - Input: {"system_id": "system_a1b2c3d4"}
-        - Output: {
-            "system_id": "system_a1b2c3d4",
-            "ground_state_energy": -2.5,
-            "degeneracy": 1,
-            "spatial_profile": [0.1, 0.2, 0.3, ...],
-            "localization": "extended"
-          }
     '''
-    system = json_manager.systems[system_id]
-    
-    # Check if all required components are present
-    if not system.lattice or not system.hilbert or not system.hamiltonian:
-        raise ValueError("System must have lattice, Hilbert space, and Hamiltonian defined. "
-                        "Use set_lattice(), set_hilbert_space(), and set_hamiltonian() first.")
-    
-    # Compute energy spectrum if not already available
-    if "energy_spectrum" not in system.results:
-        # Build Hamiltonian and compute spectrum
-        H, hi, graph = _build_hamiltonian_from_spec(system)
-        
-        # Function for exact diagonalization
-        def ED(H, k=5, which="SA"):
-            if hi.n_states > 1e3:  # sparse matrix
-                sp_h = H.to_sparse()
-                eig_vals, eig_vecs = eigsh(sp_h, k=k, which=which)
-                sort_idx = np.argsort(eig_vals)
-                eig_vals_sorted = eig_vals[sort_idx]
-                eig_vecs_sorted = eig_vecs[:, sort_idx]
-            else:
-                eig_vals_sorted, eig_vecs_sorted = np.linalg.eigh(H.to_dense())
-                if k < len(eig_vals_sorted):
-                    eig_vals_sorted = eig_vals_sorted[:k]
-                    eig_vecs_sorted = eig_vecs_sorted[:, :k]
-            return eig_vals_sorted, eig_vecs_sorted
-        
-        eigvals, eigvecs = ED(H)
-        
-        # Store spectrum results
-        system.results["energy_spectrum"] = {
-            "eigenvalues": eigvals.tolist(),
-            "eigenvectors": eigvecs.tolist(),
-            "ground_state_energy": float(eigvals[0]),
-            "energy_gap": float(eigvals[1] - eigvals[0]) if len(eigvals) > 1 else 0.0
-        }
-        system.results["model_type"] = system.hamiltonian.model_type
-        system.results["parameters"] = system.hamiltonian.get_parameters()
-    
-    spectrum = system.results["energy_spectrum"]
-    eigvals = np.array(spectrum["eigenvalues"])
-    eigvecs = np.array(spectrum["eigenvectors"])
-    
-    # Find ground state
-    E0 = eigvals[0]
-    degeneracy = np.sum(np.abs(eigvals - E0) < 1e-8)
-    
-    # Get ground state wavefunction
-    psi_gs = eigvecs[:, 0]
-    prob_density = np.abs(psi_gs)**2
-    
-    # Analyze localization
-    if system.hilbert.space_type == "fermion":
-        # For fermions, analyze particle distribution
-        localization = "localized" if np.std(prob_density) > 0.1 else "extended"
-    else:
-        localization = "N/A"
-    
-    # Store results
-    system.results["ground_state_analysis"] = {
-        "ground_state_energy": float(E0),
-        "degeneracy": int(degeneracy),
-        "spatial_profile": prob_density.tolist(),
-        "localization": localization
-    }
-    # Do NOT store any NetKet objects in results
-    json_manager.save_system(system_id)
-    
-    return {
-        "system_id": system_id,
-        "ground_state_energy": float(E0),
-        "degeneracy": int(degeneracy),
-        "spatial_profile": prob_density.tolist(),
-        "localization": localization,
-        "model_type": system.hamiltonian.model_type.upper(),
-        "parameters": system.hamiltonian.get_parameters()
-    }
+    return analyze_eigenstate(system_id, eigenstate_index=0)
 
 @mcp.tool()
 def parameter_sweep(system_id: str, parameter_name: str, 
@@ -428,9 +341,28 @@ def parameter_sweep(system_id: str, parameter_name: str,
         H = temp_hamiltonian.build_netket_hamiltonian(hi, graph, system_hilbert=system.hilbert)
         
         # Compute spectrum
-        eigvals, eigvecs = ED(H, k=hi.n_states if hi.n_states <= 100 else 10)  # Only compute all if small
+        eigvals, eigvecs = ED(H, k=hi.n_states if hi.n_states <= 100 else 10)
         ground_state_energies.append(float(eigvals[0]))
-        energy_gaps.append(float(eigvals[1] - eigvals[0]) if len(eigvals) > 1 else 0.0)
+        
+        # Calculate the physical excitation gap, accounting for degeneracy
+        if len(eigvals) > 1:
+            E0 = eigvals[0]
+            # Find the first eigenvalue that is not degenerate with the ground state
+            first_excited_val = E0
+            for e_val in eigvals[1:]:
+                if not np.isclose(e_val, E0, atol=1e-6): # Use tolerance for numerical degeneracy
+                    first_excited_val = e_val
+                    break
+            
+            # If all computed eigenvalues are degenerate, the gap is 0
+            if np.isclose(first_excited_val, E0, atol=1e-6):
+                gap = 0.0
+            else:
+                gap = first_excited_val - E0
+            energy_gaps.append(float(gap))
+        else:
+            energy_gaps.append(0.0)
+
         spectra_data[f"{parameter_name}_{param_value}"] = eigvals.tolist()
         all_eigenvalues.append(eigvals.tolist())
     
@@ -457,6 +389,50 @@ def parameter_sweep(system_id: str, parameter_name: str,
         "all_eigenvalues": all_eigenvalues,
         "model_type": model_type.upper(),
         "base_parameters": base_params
+    }
+
+@mcp.tool()
+def plot_xy(system_id: str, x_data: List[float], y_data: List[float], 
+            x_label: str, y_label: str, title: str, 
+            file_name: str) -> Dict[str, Any]:
+    '''Generate a generic 2D plot and save it to a file.
+    
+    This tool creates a 2D plot from given x and y data and saves it
+    to a file within the specified system's directory.
+    
+    Args:
+        system_id: The ID of the quantum system to associate the plot with.
+        x_data: Data for the x-axis.
+        y_data: Data for the y-axis.
+        x_label: Label for the x-axis.
+        y_label: Label for the y-axis.
+        title: Title of the plot.
+        file_name: Name of the file to save the plot (e.g., 'custom_plot.png').
+        
+    Returns:
+        Dictionary confirming the plot has been saved.
+    '''
+    system = json_manager.systems[system_id]
+    system_dir = json_manager.storage_dir / system.system_id
+    system_dir.mkdir(exist_ok=True)
+    full_path = system_dir / file_name
+    
+    plt.figure(figsize=(8, 6))
+    plt.plot(x_data, y_data, 'o-', markersize=6)
+    plt.xlabel(x_label, fontsize=12)
+    plt.ylabel(y_label, fontsize=12)
+    plt.title(title, fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    plt.savefig(full_path, dpi=150, bbox_inches='tight')
+    plt.close()
+        
+    return {
+        "system_id": system_id,
+        "plot_type": "xy_plot",
+        "file_path": str(full_path),
+        "description": "XY plot saved to file"
     }
 
 @mcp.tool()
@@ -620,6 +596,39 @@ def get_system_details(system_id: str) -> Dict[str, Any]:
     return system.to_dict()
 
 @mcp.tool()
+def display_numerical_result(system_id: str, file_name: str) -> Union[ImageContent, TextContent]:
+    """Displays a saved plot for a given quantum system analysis.
+
+    Args:
+        system_id: The ID of the system for which to display the plot.
+        file_name: The name of the plot file, e.g., 'ssh_full_spectrum.png'.
+
+    Returns:
+        The plot as an image if found, otherwise a text error message.
+    """
+    try:
+        # Get the system's directory from the json_manager
+        system_dir = json_manager.storage_dir / system_id
+        plot_path = system_dir / file_name
+
+        if not plot_path.exists():
+            return TextContent(type="text", text=f"Error: Plot file '{file_name}' not found for system '{system_id}' at '{plot_path}'.")
+
+        # Read the image file in binary mode
+        with open(plot_path, 'rb') as image_file:
+            image_data = image_file.read()
+        
+        # Encode the binary data to a base64 string
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+
+        # Return the image content
+        return ImageContent(data=image_base64, mimeType="image/png", type="image")
+
+    except Exception as e:
+        # Return an error message if anything goes wrong
+        return TextContent(type="text", text=f"An error occurred: {e}")
+
+@mcp.tool()
 def delete_quantum_system(system_id: str) -> Dict[str, Any]:
     '''Delete a quantum system and its associated data.
     
@@ -667,6 +676,113 @@ def _build_hamiltonian_from_spec(system) -> Any:
     H = system.hamiltonian.build_netket_hamiltonian(hi, graph, system_hilbert=system.hilbert)
     
     return H, hi, graph
+
+@mcp.tool()
+def analyze_eigenstate(system_id: str, eigenstate_index: int) -> Dict[str, Any]:
+    '''Analyze a specific eigenstate of a quantum system.
+    
+    This tool computes various properties of a specified eigenstate, including
+    energy and spatial profile for fermionic systems.
+    It automatically computes the energy spectrum if not already available.
+    
+    Args:
+        system_id: The ID of the quantum system
+        eigenstate_index: The index of the eigenstate to analyze (0 for ground state, 1 for first excited, etc.)
+        
+    Returns:
+        Dictionary containing eigenstate analysis
+        
+    Examples:
+        - Input: {"system_id": "system_a1b2c3d4", "eigenstate_index": 1}
+        - Output: {
+            "system_id": "system_a1b2c3d4",
+            "eigenstate_index": 1,
+            "energy": -1.8,
+            "spatial_profile": [0.3, 0.2, 0.1, ...],
+            "localization": "extended"
+          }
+    '''
+    system = json_manager.systems[system_id]
+    
+    # Check if all required components are present
+    if not system.lattice or not system.hilbert or not system.hamiltonian:
+        raise ValueError("System must have lattice, Hilbert space, and Hamiltonian defined. "
+                        "Use set_lattice(), set_hilbert_space(), and set_hamiltonian() first.")
+    
+    # Check if we need to compute the spectrum
+    spectrum = system.results.get("energy_spectrum")
+    if not spectrum or eigenstate_index >= len(spectrum.get("eigenvalues", [])):
+        num_to_compute = max(10, eigenstate_index + 1)
+        
+        # Build Hamiltonian and compute spectrum
+        H, hi, graph = _build_hamiltonian_from_spec(system)
+        
+        # Function for exact diagonalization
+        def ED(H, k=num_to_compute, which="SA"):
+            if hi.n_states > 1e3:  # sparse matrix
+                sp_h = H.to_sparse()
+                eig_vals, eig_vecs = eigsh(sp_h, k=k, which=which)
+                sort_idx = np.argsort(eig_vals)
+                eig_vals_sorted = eig_vals[sort_idx]
+                eig_vecs_sorted = eig_vecs[:, sort_idx]
+            else:
+                eig_vals_sorted, eig_vecs_sorted = np.linalg.eigh(H.to_dense())
+                if k < len(eig_vals_sorted):
+                    eig_vals_sorted = eig_vals_sorted[:k]
+                    eig_vecs_sorted = eig_vecs_sorted[:, :k]
+            return eig_vals_sorted, eig_vecs_sorted
+        
+        eigvals, eigvecs = ED(H)
+        
+        # Store spectrum results
+        system.results["energy_spectrum"] = {
+            "eigenvalues": eigvals.tolist(),
+            "eigenvectors": eigvecs.tolist(),
+            "ground_state_energy": float(eigvals[0]),
+            "energy_gap": float(eigvals[1] - eigvals[0]) if len(eigvals) > 1 else 0.0
+        }
+        system.results["model_type"] = system.hamiltonian.model_type
+        system.results["parameters"] = system.hamiltonian.get_parameters()
+
+    spectrum = system.results["energy_spectrum"]
+    eigvals = np.array(spectrum["eigenvalues"])
+    eigvecs = np.array(spectrum["eigenvectors"])
+    
+    if eigenstate_index >= len(eigvals):
+        raise ValueError(f"Eigenstate index {eigenstate_index} is out of bounds. "
+                         f"Only {len(eigvals)} eigenvalues were computed. "
+                         f"You might need to re-run compute_energy_spectrum with a larger num_eigenvalues.")
+
+    # Get the requested eigenstate
+    energy = eigvals[eigenstate_index]
+    psi = eigvecs[:, eigenstate_index]
+    prob_density = np.abs(psi)**2
+    
+    # Analyze localization
+    if system.hilbert.space_type == "fermion":
+        localization = "localized" if np.std(prob_density) > 0.1 else "extended"
+    else:
+        localization = "N/A"
+    
+    # Store results for this specific eigenstate
+    analysis_key = f"eigenstate_{eigenstate_index}_analysis"
+    system.results[analysis_key] = {
+        "eigenstate_index": eigenstate_index,
+        "energy": float(energy),
+        "spatial_profile": prob_density.tolist(),
+        "localization": localization
+    }
+    json_manager.save_system(system_id)
+    
+    return {
+        "system_id": system_id,
+        "eigenstate_index": eigenstate_index,
+        "energy": float(energy),
+        "spatial_profile": prob_density.tolist(),
+        "localization": localization,
+        "model_type": system.hamiltonian.model_type.upper(),
+        "parameters": system.hamiltonian.get_parameters()
+    }
 
 # This is the main entry point for your server
 if __name__ == "__main__":

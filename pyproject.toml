@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyclifford"
+name = "netket-mcp"
 version = "0.1.0"
-description = "A modular and efficient Python library for simulating and analyzing quantum systems in the stabilizer formalism."
+description = "A Model Context Protocol (MCP) server for quantum many-body physics using NetKet."
 authors = [
     { name = "EdenCode", email = "info@edencode.ai" }
 ]
@@ -14,22 +14,23 @@ requires-python = ">=3.10"
 license = "MIT"
 dependencies = [
     "numpy>=1.20.0",
-    "numba>=0.56.0",
+    "netket>=3.17.0",
     "fastmcp>=0.1.0",
     "pydantic>=2.0.0",
     "matplotlib>=3.4.0",
+    "scipy>=1.7.0",
     "jupyter>=1.0.0",
     "ipykernel>=6.0.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/EdenCodeInc/PyCliffordMCP"
-Documentation = "https://github.com/EdenCodeInc/PyCliffordMCP#readme"
-Repository = "https://github.com/EdenCodeInc/PyCliffordMCP.git"
-Issues = "https://github.com/EdenCodeInc/PyCliffordMCP/issues"
+Homepage = "https://github.com/EdenCodeInc/NetKetMCP"
+Documentation = "https://github.com/EdenCodeInc/NetKetMCP#readme"
+Repository = "https://github.com/EdenCodeInc/NetKetMCP.git"
+Issues = "https://github.com/EdenCodeInc/NetKetMCP/issues"
 
 [tool.setuptools.packages.find]
-include = ["pyclifford*", "mcp_server*"]
+include = ["*"]
 
 [tool.black]
 line-length = 88

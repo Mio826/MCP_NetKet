@@ -50,7 +50,7 @@ class QuantumSystemState:
         return obj
 
 class NetKetJSONManager:
-    def __init__(self, storage_dir: str = "./quantum_systems"):
+    def __init__(self, storage_dir: str = "/tmp/quantum_systems"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(exist_ok=True)
         self.systems: Dict[str, QuantumSystemState] = {}

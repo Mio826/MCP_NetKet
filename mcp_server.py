@@ -1,4 +1,4 @@
-from fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 from mcp.types import TextContent, ImageContent
 from netket_schemas import LatticeSchema, HilbertSpaceSchema, HamiltonianSchema
 from netket_jsons import NetKetJSONManager, QuantumSystemState
@@ -16,8 +16,9 @@ import shutil
 # Create the MCP server object
 mcp = FastMCP('NetKet Quantum Many-Body Physics Server')
 
-# Global JSON manager for state management
-json_manager = NetKetJSONManager()
+# @mcp.tool()
+# def add(a: int, b: int) -> int:
+#     return a + b
 
 @mcp.tool()
 def create_quantum_system(description: Optional[str] = None) -> Dict[str, Any]:

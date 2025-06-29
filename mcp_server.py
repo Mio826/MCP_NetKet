@@ -784,6 +784,6 @@ def analyze_eigenstate(system_id: str, eigenstate_index: int) -> Dict[str, Any]:
         "parameters": system.hamiltonian.get_parameters()
     }
 
-# This is the main entry point for your server
-if __name__ == "__main__":
-    mcp.run() 
+# # This is the main entry point for your server
+# if __name__ == "__main__":
+#     mcp.run() 

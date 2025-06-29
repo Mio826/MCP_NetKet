@@ -1,0 +1,25 @@
+{
+    "mcpServers": {
+        "netket": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--with",
+                "mcp[cli]",
+                "--with",
+                "numpy",
+                "--with",
+                "netket",
+                "--with",
+                "fastmcp",
+                "--with",
+                "scipy",
+                "--with",
+                "matplotlib",
+                "mcp",
+                "run",
+                "/Users/hwanda/Desktop/EdenCode/projects/MCP-hackathon/condensed-matter-mcp/MCP_NetKet/mcp_server.py"
+            ]
+        }
+    }
+} 

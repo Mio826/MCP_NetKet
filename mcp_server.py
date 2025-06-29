@@ -16,6 +16,9 @@ import shutil
 # Create the MCP server object
 mcp = FastMCP('NetKet Quantum Many-Body Physics Server')
 
+# Create a JSON manager
+json_manager = NetKetJSONManager()
+
 # @mcp.tool()
 # def add(a: int, b: int) -> int:
 #     return a + b

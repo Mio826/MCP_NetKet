@@ -1,170 +1,202 @@
-# NetKet MCP Server for Quantum Many-Body Physics
+# Self-Evolving MCP Tools for Scientific Computing
 
-A Model Context Protocol (MCP) server for quantum many-body physics using NetKet. This server provides a simplified, modular framework for defining and simulating quantum systems with text-based commands.
+A framework for developing and iteratively improving Model Context Protocol (MCP) tools for scientific Python libraries through automated feedback loops.
 
-## 🚀 Quick Start
+## Overview
 
-### 1. Installation
+This repository demonstrates a novel approach to building MCP tools that can self-evolve and improve through iterative testing against scientific computing tasks. Rather than manually crafting perfect tools from the start, this framework allows tools to grow and adapt based on real-world usage patterns and feedback.
 
-```bash
-pip install netket fastmcp pydantic numpy scipy matplotlib
+## Framework Architecture
+
+The framework consists of four core components that work together in a continuous improvement loop:
+
+### 1. Memory Manager (`netket_jsons.py`)
+A persistent state manager that tracks scientific projects and workflows, serving as a "scratch paper" for complex multi-step analyses. It maintains:
+- System configurations and parameters
+- Intermediate results and computations  
+- Analysis history and metadata
+- File organization and storage
+
+### 2. Language Parser (`netket_schemas.py`)
+Natural language processing schemas that convert human descriptions into structured scientific objects:
+- Lattice geometries ("4x4 square lattice" → NetKet graph objects)
+- Physical systems ("10 fermions with spin-1/2" → Hilbert spaces)
+- Model specifications ("SSH model with t1=1, t2=0.2" → Hamiltonian operators)
+
+### 3. MCP Server (`mcp_server.py`)
+The main tool server providing scientific computing capabilities:
+- Quantum system creation and management
+- Energy spectrum calculations
+- Parameter sweeps and phase transitions
+- Data visualization and analysis
+- Results storage and retrieval
+
+### 4. Task Set (`task-set/`)
+Static reference implementations of common scientific computing tasks that serve as:
+- **Benchmarks**: Ground truth for validating tool outputs (never modified)
+- **Instructions**: Clear examples showing what the tools should accomplish
+- **Test cases**: Comprehensive coverage of scientific workflows to be replicated
+
+## Self-Evolution Loop
+
+```
+┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐
+│ Task Set  │───▶│ AI Agent  │───▶│   Tool    │───▶│ Compare & │───▶│  Update   │
+│ (Static)  │    │ Use Tools │    │ Results   │    │ Feedback  │    │   Tools   │
+└───────────┘    └───────────┘    └───────────┘    └───────────┘    └───────────┘
+     │                                   │              ▲                 │
+     │                                   │              │                 │
+     ▼                                   ▼              │                 │
+┌───────────┐    ┌───────────┐         ┌─┴──────────────┴─┐               │
+│  Python   │───▶│Reference  │────────▶│     Match?       │               │
+│ Scripts   │    │ Results   │         │   ✓ Done         │               │
+└───────────┘    └───────────┘         │   ✗ Iterate  ────┼───────────────┘
+                                       └──────────────────┘
 ```
 
-### 2. Run the Server
+The evolution process:
+1. **Apply Tools**: AI agent uses MCP tools to replicate task workflows from the static task set
+2. **Generate Ground Truth**: Directly execute the Python scripts to get reference results
+3. **Compare**: Tool results vs direct Python execution results (plots, data, analysis)
+4. **Analyze Gaps**: Identify differences, errors, and missing capabilities in the tools
+5. **Update Tools**: Modify MCP tools (schemas, server functions, logic) to close gaps
+6. **Iterate**: Repeat until MCP tools can perfectly replicate Python script results
 
-Start the MCP server in a terminal:
-```bash
-python mcp_server.py
+## Key Principles
+
+- **Generalizability**: Build minimal, reusable building blocks rather than task-specific solutions
+- **Iterative Improvement**: Tools evolve through usage, not upfront design
+- **Scientific Accuracy**: Maintain correctness while improving usability
+- **Natural Language Interface**: Enable intuitive interaction with complex scientific concepts
+
+## Getting Started
+
+### Prerequisites
+- [Cursor](https://cursor.com/) IDE with MCP support
+- Python 3.10+
+- Required scientific libraries (see `requirements.txt`)
+
+### Local Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd MCP_NetKet
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure Cursor MCP**:
+   Update the path in `.cursor/mcp.json` to your local directory:
+   ```json
+   {
+     "mcpServers": {
+       "netket": {
+         "command": "uv",
+         "args": [
+           "run",
+           "--with", "mcp[cli]",
+           "--with", "matplotlib",
+           "--with", "scipy", 
+           "--with", "netket",
+           "--with", "numpy",
+           "mcp",
+           "run",
+           "/path/to/your/local/MCP_NetKet/mcp_server.py"
+         ]
+       }
+     }
+   }
+   ```
+
+4. **Start using the tools**:
+   - Open Cursor
+   - Enable agent mode
+   - Start with: "Please use the MCP tools to implement the SSH analysis task"
+
+## Usage Example
+
+The framework enables natural language interactions with complex scientific computations:
+
+```
+Human: "Analyze the SSH model edge states for a 24-site chain with t1=1.0, t2=0.2"
+
+AI Agent: 
+1. Creates quantum system
+2. Sets up 24-site chain lattice  
+3. Configures 1 spinless fermion
+4. Builds SSH Hamiltonian
+5. Computes full energy spectrum
+6. Analyzes zero-energy edge states
+7. Generates visualization plots
 ```
 
-### 3. Use in a Client
+## Contributing
 
-In a separate Python script or Jupyter notebook, you can interact with the server's tools. For example, to create a system and compute its ground state energy:
+### Quick Start: Your First Evolution Loop
 
-```python
-from mcp_server import create_quantum_system, set_lattice, set_hilbert_space, set_hamiltonian, compute_energy_spectrum
+Get started contributing in 5 minutes:
 
-# Create a system for a 1D chain of 24 sites
-sys_id = create_quantum_system("My SSH Chain")['system_id']
+1. **Setup Environment**:
+   ```bash
+   git clone <repo-url> && cd MCP_NetKet
+   pip install -r requirements.txt
+   # Update .cursor/mcp.json with your local path
+   ```
 
-# Define its properties
-set_lattice(sys_id, "chain of 24 sites")
-set_hilbert_space(sys_id, "1 spinless fermion")
-set_hamiltonian(sys_id, "SSH model with t1=1.0, t2=0.2")
+2. **Run Reference Task**:
+   ```bash
+   python task-set/analyze_ssh.py
+   # ✓ Generates ground truth results in /tmp/quantum_systems/
+   ```
 
-# Compute and print the ground state energy
-spectrum = compute_energy_spectrum(sys_id, num_eigenvalues=1)
-print(f"Ground State Energy: {spectrum['ground_state_energy']}")
-```
+3. **Try with MCP Tools** - Open Cursor, enable agent mode, and prompt:
+   ```
+   "Use the MCP tools to analyze the SSH model for a 24-site chain with t1=1.0, t2=0.2, 
+   comparing your results to task-set/analyze_ssh.py"
+   ```
 
-## 🖥️ Lucien AI Desktop Integration
+4. **Compare Results**:
+   - **Reference**: Check `/tmp/quantum_systems/system_*/ssh_full_spectrum.png`
+   - **Your Tools**: Did you get the same energy spectrum and edge state localization?
+   - **Gaps Found**: Missing features? Wrong values? Poor visualizations?
 
-Integrate this MCP server with [Lucien AI desktop](https://pathintegral.notion.site/how-to-use-lucien#2159dd60ece1807986c3f9ab795a1a05) for an enhanced AI-powered quantum physics research experience!
+5. **Evolve**: Update the MCP tools based on what you learned, then repeat until perfect match!
 
-### Step 1: Install Lucien AI
-1. Download and install [Lucien AI desktop](https://pathintegral.notion.site/how-to-use-lucien#2159dd60ece1807986c3f9ab795a1a05)
-2. Log in to your Lucien account
-3. In Lucien's **Settings**, follow the instructions to install `uv` (Lucien's package manager)
+**Expected First Run**: Tools will likely miss some capabilities. That's the point - now you know exactly what to improve.
 
-### Step 2: Clone the Repository
-```bash
-git clone <your-repo-url>
-cd MCP_NetKet
-```
+### Advanced Contributing
 
-### Step 3: Configure MCP Server in Lucien
-1. Open Lucien AI desktop
-2. Go to **Settings** → **MCP Servers**
-3. Click **Add Server** and configure:
+To improve the MCP tools further:
 
-   **Server Configuration:**
-   - **Server name**: `NetKet-MCP`
-   - **Command**: `uv`
-   - **Arguments**: `run mcp run /path/to/your/MCP_NetKet/mcp_server.py`
-     *(Replace with your actual local path to mcp_server.py)*
-   - **Environment**: 
-     - Variable: `UV_PROJECT_ENVIRONMENT`
-     - Value: `/path/to/your/MCP_NetKet`
-     *(Replace with your actual local path to the MCP_NetKet folder)*
+1. **Add new tasks**: Create reference implementations in `task-set/`
+2. **Run evolution loop**: Use Cursor agent mode with the prompt:
+   > "Please use the tools to implement each task in the task set, using the python code as instruction and benchmark. Try to develop general tools to optimize the mcp_server and seed tools so that all tasks can be conquered. Don't build task-specific tools, always find general solutions. Iterate until the tools can perfectly solve all tasks."
 
-4. Click **Save**
+3. **Test generalization**: Ensure new capabilities work across multiple scientific domains
+4. **Document improvements**: Update schemas and tool descriptions
 
-### Step 4: Start Using!
-- The NetKet MCP server will now be available in your Lucien AI conversations
-- You can use natural language to create quantum systems, run simulations, and analyze results
-- Try the [Interactive Demo](#-interactive-demo-ising-model-quantum-phase-transition) below!
+## Current Capabilities
 
-**Example Lucien conversation:**
-```
-"Create a quantum system for the SSH model on a 24-site chain with 1 fermion and analyze its energy spectrum"
-```
+- **Quantum Many-Body Physics**: SSH model, Hubbard model, Heisenberg chains
+- **Lattice Systems**: 1D chains, 2D square/triangular lattices, 3D cubic lattices  
+- **Analysis Tools**: Energy spectra, phase transitions, parameter sweeps
+- **Visualization**: Automatic plot generation and result display
+- **State Management**: Persistent storage of complex scientific workflows
 
-## 🎯 Interactive Demo: Ising Model Quantum Phase Transition
+## Future Directions
 
-Try this step-by-step demo to see the MCP server in action! This demonstrates a quantum phase transition where the system changes from an ordered to a disordered phase.
+This framework can be extended to other scientific domains:
+- **Molecular Dynamics**: Protein folding, drug discovery
+- **Materials Science**: Electronic structure, phonon calculations  
+- **Astrophysics**: N-body simulations, cosmological models
+- **Bioinformatics**: Sequence analysis, structural biology
 
-### Step 1: Setup System
-```
-Create a quantum system for the Ising model on a 16-site chain with spin-1/2 particles. Set the Ising Hamiltonian with Jz=1 and a transverse field hx ranging from 0 to 2.
-```
+The self-evolution approach ensures tools adapt to the specific needs and workflows of each scientific field while maintaining general applicability.
 
-### Step 2: Run Analysis & Plot Gap
-```
-Perform a parameter sweep over hx. From the results, create a plot showing the energy gap as a function of the transverse field.
-```
+## License
 
-### Step 3: Plot Degeneracy
-```
-Using the same sweep results, create a plot showing the ground state degeneracy as a function of the transverse field.
-```
-
-### Step 4: Display and Interpret
-```
-Display both plots and explain what we observe about the Ising model quantum phase transition, specifically how the energy gap closes and the degeneracy drops from 2 to 1 at the critical point around hx=1.
-```
-
-**Expected Results:**
-- **Energy gap**: Closes at the critical point (hx ≈ 1)
-- **Degeneracy**: Drops from 2 (ordered phase) to 1 (disordered phase) at the critical point
-- **Physical interpretation**: The system transitions from a magnetically ordered state to a disordered state
-
-This demo showcases the power of the flexible `analyze_eigenstate` and `plot_xy` tools for custom quantum physics analysis!
-
-## 🔬 Analysis Scripts
-
-This repository includes ready-to-run analysis scripts that demonstrate how to use the server to explore key physical phenomena. 
-
-All generated plots are saved in a dedicated folder under `/tmp/quantum_systems/`. The `/tmp` directory is a standard folder for temporary files at the root of your filesystem, which ensures compatibility with read-only environments. You can access it via the terminal with `cd /tmp` or, on macOS, using the Finder's "Go to Folder" command (Shift+Cmd+G). **Please note that its contents may be cleared upon system restart.**
-
-### 1. SSH Model: Topological Edge States
-- **Script:** `analyze_ssh.py`
-- **Physics:** Visualizes the full energy spectrum and the zero-energy edge states characteristic of the topological phase in the Su-Schrieffer-Heeger (SSH) model.
-- **Usage:** 
-  ```bash
-  python analyze_ssh.py
-  ```
-
-### 2. Hubbard Model: Mott Metal-Insulator Transition
-- **Script:** `analyze_hubbard.py`
-- **Physics:** Calculates and plots the Mott gap as a function of the on-site repulsion `U`, demonstrating the transition from a metal to a Mott insulator.
-- **Usage:**
-  ```bash
-  python analyze_hubbard.py
-  ```
-
-### 3. Ising Model: Quantum Phase Transition
-- **Script:** `analyze_ising.py`
-- **Physics:** Shows the quantum phase transition by plotting both the energy gap and ground-state degeneracy as a function of the transverse magnetic field `hx`.
-- **Usage:**
-  ```bash
-  python analyze_ising.py
-  ```
-
-## ⚙️ Core Concepts & API
-
-The server operates on a simple, schema-based design. You define components of your system using text, which the server parses into NetKet objects.
-
-### Supported Specifications
-
-- **Lattice:** `"chain of 24 sites"`, `"8x8 square lattice"`, `"4x4x4 cubic lattice"`
-- **Hilbert Space:** `"spin-1/2 on each site"`, `"10 spinless fermions"`, `"4 fermions with spin-1/2"`
-- **Hamiltonian:**
-  - `"SSH model with t1=1, t2=0.2"`
-  - `"Hubbard model with t=1, U=4"`
-  - `"Ising model with Jz=1, hx=0.5"`
-  - `"Heisenberg model with J=1"`
-
-### Main API Tools
-
-- `create_quantum_system()`: Creates a new system and returns its ID.
-- `set_lattice()`: Sets the lattice geometry.
-- `set_hilbert_space()`: Sets the particle type and constraints.
-- `set_hamiltonian()`: Defines the model and its parameters.
-- `compute_energy_spectrum()`: Performs exact diagonalization.
-- `analyze_ground_state()`: Calculates properties of the lowest-energy state.
-- `analyze_eigenstate()`: Analyzes any specific eigenstate by index.
-- `parameter_sweep()`: Runs calculations over a range of parameter values.
-- `plot_xy()`: Creates custom 2D plots from any data.
-- `generate_plot()`: Creates plots from analysis results.
-- `list_quantum_systems()`: Lists all currently managed systems.
-- `delete_quantum_system()`: Removes a system and all its data.
+MIT License - see LICENSE file for details. 
